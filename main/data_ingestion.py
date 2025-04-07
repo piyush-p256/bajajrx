@@ -34,6 +34,12 @@ def data_ingestion(status):
         return vstore
     return vstore, insert_ids
 
+
+print(f"Endpoint: {ASTRA_DB_API_ENDPOINT}")
+print(f"Token: {ASTRA_DB_APPLICATION_TOKEN[:6]}...")  # only partial for safety
+print(f"Keyspace: {ASTRA_DB_KEYSPACE}")
+
+
 if __name__ == "__main__":
 
     vstore, insert_ids = data_ingestion(None)
