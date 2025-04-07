@@ -1,0 +1,9 @@
+setup.py
+main/__init__.py
+main/data_converter.py
+main/data_ingestion.py
+main/retrieval_generation.py
+shl.egg-info/PKG-INFO
+shl.egg-info/SOURCES.txt
+shl.egg-info/dependency_links.txt
+shl.egg-info/top_level.txt
