@@ -1,6 +1,8 @@
 import pandas as pd
 from langchain_core.documents import Document
 
+# This script converts the SHL assessment data into a format suitable for vector storage.
+
 def dataconverter():
     assesment_data = pd.read_csv("../data/shl_assesments.csv")
     data = assesment_data[["Title", "Skills Assessed"]]
