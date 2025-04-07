@@ -41,12 +41,20 @@ print(f"Keyspace: {ASTRA_DB_KEYSPACE}")
 
 
 if __name__ == "__main__":
-
     vstore, insert_ids = data_ingestion(None)
-    print(f"\n Inserted {len(insert_ids)} documents.")
+    if insert_ids:
+        print(f"\n✅ Inserted {len(insert_ids)} documents.")
+    else:
+        print("\n⚠️ No documents inserted. Check dataconverter() or DB connection.")
+
     results = vstore.similarity_search("Which assessment is good for Software engineers?")
-    for res in results:
-        print(f"\n {res.page_content} [{res.metadata}]")
+    if results:
+        print(f"\n🔍 Search Results ({len(results)} results):")
+        for res in results:
+            print(f"\n📄 {res.page_content} [{res.metadata}]")
+    else:
+        print("\n❌ No similarity results found.")
+
 
 
 
