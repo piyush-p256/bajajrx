@@ -1,8 +1,8 @@
 import pandas as pd
-from langchain.core.documents import Document
+from langchain_core.documents import Document
 
 def dataconverter():
-    assesment_data = pd.read_csv("data/shl_assesment.csv")
+    assesment_data = pd.read_csv("../data/shl_assesments.csv")
     data = assesment_data[["Title", "Skills Assessed"]]
 
     assessment_list = []
