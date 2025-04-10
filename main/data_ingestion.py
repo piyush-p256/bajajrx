@@ -28,6 +28,7 @@ def data_ingestion(status):
 
     if storage == None:
         docs = dataconverter()
+        vstore.clear()
         insert_ids = vstore.add_documents(docs)
     
     else:

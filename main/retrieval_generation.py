@@ -15,7 +15,7 @@ load_dotenv()
 
 os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY")
 
-model = ChatGroq(model="llama3-70b-8192", temperature=0.5)
+model = ChatGroq(model="llama3-70b-8192", temperature=0)
 
 chat_history = []
 store = {}
@@ -27,13 +27,14 @@ def get_session_history(session_id: str) -> BaseChatMessageHistory:
 
 
 def generation(vstore):
-    retriever = vstore.as_retriever(search_kwargs={"k": 3})
+    retriever = vstore.as_retriever(search_kwargs={"k": 5})
 
-    retriever_prompt = (
-        "Given a chat history and the latest user question which might reference context in the chat history, "
-        "formulate a standalone question which can be understood without the chat history. "
-        "Do NOT answer the question, just reformulate it if needed and otherwise return it as is."
+    retriever_prompt = ("Given a chat history and the latest user question which might reference context in the chat history,"
+    "formulate a standalone question which can be understood without the chat history."
+    "Do NOT answer the question, just reformulate it if needed and otherwise return it as is."
+    "strictly return the url from given pdf only"
     )
+
 
     contextualize_q_prompt = ChatPromptTemplate.from_messages(
         [
@@ -48,11 +49,27 @@ def generation(vstore):
     )
 
     ASSESMENT_BOT_TEMPLATE = """
-You are an expert assistant trained on SHL assessments and psychometric evaluations. 
-You help users understand various assessments, what skills they evaluate, their target roles, 
-and other relevant details extracted from titles and descriptions.
+You are an expert assistant trained on the SHL assessment catalogue.
+You MUST use only the data provided in CONTEXT and return assessments based on user query.
 
-Your responses should be accurate, concise, and informative. Stick to the assessment context strictly and avoid going off-topic.
+Respond ONLY in the JSON format shown below.
+
+If no assessment matches, return "recommended_assessments": [].
+
+{{
+  "recommended_assessments": [
+    {{
+      "url": "Valid URL in string — strictly from context",
+      "adaptive_support": "Yes/No",
+      "description": "Description in string",
+      "duration": 60,
+      "remote_support": "Yes/No",
+      "test_type": ["List of string"]
+    }}
+  ]
+}}
+
+DO NOT create or hallucinate any URLs — only return URLs seen in CONTEXT.
 
 CONTEXT:
 {context}
@@ -61,6 +78,7 @@ QUESTION: {input}
 
 YOUR ANSWER:
 """
+
 
     qa_prompt = ChatPromptTemplate.from_messages(
         [
@@ -89,7 +107,7 @@ if __name__ == "__main__":
     conversational_rag_chain = generation(vstore)
 
     answer = conversational_rag_chain.invoke(
-        {"input": "Which assessment is good for Software engineers?"},
+        {"input": "Looking to hire mid-level professionals who are proficient in Python, SQL and Java Script. Need an assessment package that can test all skills with max duration of 60 minutes"},
         config={"configurable": {"session_id": "Dhananjay_VStest"}},
     )["answer"]
     print(answer)
