@@ -81,13 +81,13 @@ def recommend_assessments():
             else:
                 return jsonify({"error": "Content-Type must be application/json"}), 400
         
-        # Handle GET request
+      
         elif request.method == "GET":
             query = request.args.get("query")
             if not query:
                 return jsonify({"error": "Missing 'query' parameter"}), 400
         
-        # Process the query
+       
         result = chain.invoke(
             {"input": query},
             config={
@@ -95,13 +95,12 @@ def recommend_assessments():
             },
         )["answer"]
         
-        # Parse the result into JSON
-        # Since result is expected to be in JSON format based on your template
+        
         if isinstance(result, dict):
             processed_result = convert_test_types(result)
             return jsonify(processed_result), 200
         else:
-            # If result is a string containing JSON, parse it
+           
             try:
                 parsed_result = json.loads(result)
                 processed_result = convert_test_types(parsed_result)
