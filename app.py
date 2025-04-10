@@ -9,6 +9,37 @@ chain = generation(vstore)
 
 app = Flask(__name__)
 
+# Mapping for test type codes to full descriptions
+TEST_TYPE_MAPPING = {
+    "A": "Ability & Aptitude",
+    "B": "Biodata & Situational Judgement",
+    "C": "Competencies", 
+    "D": "Development & 360",
+    "E": "Assessment Exercises",
+    "K": "Knowledge & Skills",
+    "P": "Personality & Behavior",
+    "S": "Simulations"
+}
+
+# Function to convert test type codes to full descriptions
+def convert_test_types(result):
+    if "recommended_assessments" in result:
+        for assessment in result["recommended_assessments"]:
+            if "test_type" in assessment and isinstance(assessment["test_type"], list):
+                expanded_types = []
+                for type_code in assessment["test_type"]:
+                    # Handle case where multiple codes are in one string (e.g., "BCP")
+                    if len(type_code) > 1 and all(c in TEST_TYPE_MAPPING for c in type_code):
+                        # Split the string into individual characters and convert each
+                        for code in type_code:
+                            expanded_types.append(TEST_TYPE_MAPPING[code])
+                    elif type_code in TEST_TYPE_MAPPING:
+                        expanded_types.append(TEST_TYPE_MAPPING[type_code])
+                    else:
+                        expanded_types.append(type_code)  # Keep as is if unknown
+                assessment["test_type"] = expanded_types
+    return result
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -67,12 +98,14 @@ def recommend_assessments():
         # Parse the result into JSON
         # Since result is expected to be in JSON format based on your template
         if isinstance(result, dict):
-            return jsonify(result), 200
+            processed_result = convert_test_types(result)
+            return jsonify(processed_result), 200
         else:
             # If result is a string containing JSON, parse it
             try:
                 parsed_result = json.loads(result)
-                return jsonify(parsed_result), 200
+                processed_result = convert_test_types(parsed_result)
+                return jsonify(processed_result), 200
             except json.JSONDecodeError:
                 # If parsing fails, return as a text response
                 return jsonify({"error": "Failed to parse result as JSON", "raw_result": result}), 500
