@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from main.retrieval_generation import generation
 from main.data_ingestion import data_ingestion
+import json
 
 # Initialize data ingestion and generation chain
 vstore = data_ingestion("done")
@@ -63,23 +64,18 @@ def recommend_assessments():
             },
         )["answer"]
         
-        # Format the response
-        # This is a placeholder - adjust based on what chain.invoke actually returns
-        formatted_response = {
-            "recommended_assessments": [
-                {
-                    "url": "https://example.com/assessment1",
-                    "adaptive_support": "Yes",
-                    "description": "Sample assessment based on query",
-                    "duration": 60,
-                    "remote_support": "Yes",
-                    "test_type": ["Technical", "Coding"]
-                }
-                # Add more assessments based on your actual data
-            ]
-        }
-        
-        return jsonify(formatted_response), 200
+        # Parse the result into JSON
+        # Since result is expected to be in JSON format based on your template
+        if isinstance(result, dict):
+            return jsonify(result), 200
+        else:
+            # If result is a string containing JSON, parse it
+            try:
+                parsed_result = json.loads(result)
+                return jsonify(parsed_result), 200
+            except json.JSONDecodeError:
+                # If parsing fails, return as a text response
+                return jsonify({"error": "Failed to parse result as JSON", "raw_result": result}), 500
         
     except Exception as e:
         app.logger.error(f"Error in recommend endpoint: {str(e)}")

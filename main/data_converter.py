@@ -31,7 +31,7 @@ def dataconverter():
         if isinstance(test_type, str):
             test_type = [x.strip() for x in test_type.split(",") if x.strip()]
 
-        # Make sure we're explicitly preserving the data types
+       
         metadata = {
             "url": str(obj.get("test_url", "")),
             "adaptive_support_str": str(obj.get("adaptive_support", "")),
@@ -41,7 +41,7 @@ def dataconverter():
             "test_type": test_type
         }
 
-        # Create document content with explicit formatting
+      
         page_content = f"""
 Assessment Title: {obj.get('assessment_title', '').strip()}
 URL: {metadata['url']}

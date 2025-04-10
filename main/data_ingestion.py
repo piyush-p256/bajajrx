@@ -37,7 +37,7 @@ def data_ingestion(status):
 
 
 print(f"Endpoint: {ASTRA_DB_API_ENDPOINT}")
-print(f"Token: {ASTRA_DB_APPLICATION_TOKEN[:6]}...")  # only partial for safety
+print(f"Token: {ASTRA_DB_APPLICATION_TOKEN[:6]}...")  
 print(f"Keyspace: {ASTRA_DB_KEYSPACE}")
 
 
