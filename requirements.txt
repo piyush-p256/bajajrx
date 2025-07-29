@@ -1,10 +1,6 @@
-langchain-astradb
-langchain
-langchain-community 
-langchain-groq
-datasets
-pypdf
-python-dotenv
-pandas
-flask
--e .
+Flask==2.3.3
+sentence-transformers==2.6.1
+faiss-cpu==1.7.4
+numpy>=1.21
+scikit-learn>=1.0
+requests>=2.25

@@ -1,117 +1,74 @@
-from flask import Flask, render_template, request, jsonify
-from main.retrieval_generation import generation
-from main.data_ingestion import data_ingestion
-import json
+from flask import Flask, request, jsonify
+import functools
+import os
+from dotenv import load_dotenv
 
-# Initialize data ingestion and generation chain
-vstore = data_ingestion("done")
-chain = generation(vstore)
+load_dotenv()
 
+from main.document_ingestion import ingest_document
+from main.semantic_retrieval import embed_chunks, build_faiss_index, retrieve_relevant_chunks
+from main.llm_answer import generate_llm_answers_groq
+from sentence_transformers import SentenceTransformer
 app = Flask(__name__)
 
-# Mapping for test type codes to full descriptions
-TEST_TYPE_MAPPING = {
-    "A": "Ability & Aptitude",
-    "B": "Biodata & Situational Judgement",
-    "C": "Competencies", 
-    "D": "Development & 360",
-    "E": "Assessment Exercises",
-    "K": "Knowledge & Skills",
-    "P": "Personality & Behavior",
-    "S": "Simulations"
-}
+# Authorization Decorator
+def require_bearer_token(view_func):
+    @functools.wraps(view_func)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        expected_token = '82f5af99c6ce321fdbd4196aabc8f25feef8593924eb979ec060644672dca027'
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid Authorization header'}), 401
+        token = auth_header.split(' ', 1)[1]
+        if token != expected_token:
+            return jsonify({'error': 'Invalid token'}), 401
+        return view_func(*args, **kwargs)
+    return wrapper
 
-# Function to convert test type codes to full descriptions
-def convert_test_types(result):
-    if "recommended_assessments" in result:
-        for assessment in result["recommended_assessments"]:
-            if "test_type" in assessment and isinstance(assessment["test_type"], list):
-                expanded_types = []
-                for type_code in assessment["test_type"]:
-                    # Handle case where multiple codes are in one string (e.g., "BCP")
-                    if len(type_code) > 1 and all(c in TEST_TYPE_MAPPING for c in type_code):
-                        # Split the string into individual characters and convert each
-                        for code in type_code:
-                            expanded_types.append(TEST_TYPE_MAPPING[code])
-                    elif type_code in TEST_TYPE_MAPPING:
-                        expanded_types.append(TEST_TYPE_MAPPING[type_code])
-                    else:
-                        expanded_types.append(type_code)  # Keep as is if unknown
-                assessment["test_type"] = expanded_types
-    return result
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/get", methods=["POST", "GET"])
-def chat():
-    if request.method == "POST":
-        msg = request.form["msg"]
-        input = msg
-        
-        result = chain.invoke(
-            {"input": input},
-            config={
-                "configurable": {"session_id": "Dhananjay_VStest"}
-            },
-        )["answer"]
-        
-        return str(result)
-
-# 1. Health Check Endpoint
+# Optional Health Check Endpoint
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "healthy"}), 200
 
-# 2. Assessment Recommendation Endpoint
-@app.route("/recommend", methods=["POST", "GET"])
-def recommend_assessments():
+# Core HackRx Run Endpoint
+@app.route('/hackrx/run', methods=['POST'])
+@require_bearer_token
+def hackrx_run():
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+
+    data = request.get_json()
+    documents = data.get('documents')
+    questions = data.get('questions')
+
+    if not documents or not questions or not isinstance(questions, list):
+        return jsonify({'error': 'Invalid input: documents and questions are required'}), 400
+
     try:
-        query = None
-        
-        # Handle POST request
-        if request.method == "POST":
-            if request.is_json:
-                data = request.get_json()
-                if data and "query" in data:
-                    query = data["query"]
-                else:
-                    return jsonify({"error": "Missing 'query' field in request body"}), 400
-            else:
-                return jsonify({"error": "Content-Type must be application/json"}), 400
-        
-      
-        elif request.method == "GET":
-            query = request.args.get("query")
-            if not query:
-                return jsonify({"error": "Missing 'query' parameter"}), 400
-        
-       
-        result = chain.invoke(
-            {"input": query},
-            config={
-                "configurable": {"session_id": "Dhananjay_VStest"}
-            },
-        )["answer"]
-        
-        
-        if isinstance(result, dict):
-            processed_result = convert_test_types(result)
-            return jsonify(processed_result), 200
+        if isinstance(documents, str):
+            chunks = ingest_document(documents)
         else:
-           
-            try:
-                parsed_result = json.loads(result)
-                processed_result = convert_test_types(parsed_result)
-                return jsonify(processed_result), 200
-            except json.JSONDecodeError:
-                # If parsing fails, return as a text response
-                return jsonify({"error": "Failed to parse result as JSON", "raw_result": result}), 500
-        
+            return jsonify({'error': 'Only a single document URL is supported for now.'}), 400
+
+        if not chunks:
+            return jsonify({'error': 'No text chunks extracted from document.'}), 500
+
+        embeddings, texts, metadata = embed_chunks(chunks)
+        index = build_faiss_index(embeddings)
+
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+        top_k = 2
+        relevant_chunks = retrieve_relevant_chunks(chunks, index, model, questions, top_k=top_k)
+
+        llm_answers = generate_llm_answers_groq(questions, relevant_chunks)
+
+        return jsonify({
+            'answers': llm_answers,
+            'num_chunks': len(chunks)
+        }), 200
+
     except Exception as e:
-        app.logger.error(f"Error in recommend endpoint: {str(e)}")
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        return jsonify({'error': f'Document processing, retrieval, or LLM answer failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
