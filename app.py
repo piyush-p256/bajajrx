@@ -7,7 +7,7 @@ load_dotenv()
 
 from main.document_ingestion import ingest_document
 from main.semantic_retrieval import embed_chunks, build_faiss_index, retrieve_relevant_chunks
-from main.llm_answer import generate_llm_answers_groq
+from main.llm_answer import generate_llm_answers_together
 from sentence_transformers import SentenceTransformer
 app = Flask(__name__)
 
@@ -60,7 +60,7 @@ def hackrx_run():
         top_k = 2
         relevant_chunks = retrieve_relevant_chunks(chunks, index, model, questions, top_k=top_k)
 
-        llm_answers = generate_llm_answers_groq(questions, relevant_chunks)
+        llm_answers = generate_llm_answers_together(questions, relevant_chunks)
 
         return jsonify({
             'answers': llm_answers,
