@@ -5,3 +5,6 @@ numpy>=1.21
 scikit-learn>=1.0
 requests>=2.25
 python-dotenv>=0.21.0
+pypdf==4.2.0
+together==1.0.5
+
